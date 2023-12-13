@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<script>
+    // var _hmt = _hmt || [];
+    // (function () {
+    //     var hm = document.createElement("script");
+    //     hm.src = "https://hm.baidu.com/hm.js?c923daf3182a4b0ce01878475080aadc";
+    //     var s = document.getElementsByTagName("script")[0];
+    //     s.parentNode.insertBefore(hm, s);
+    // })();
+</script>
+
+<head>
+    <meta charset="UTF-8">
+    <title>2024，元旦快乐！</title>
+</head>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: black;
+    }
+
+    canvas {
+        position: absolute;
+    }
+</style>
+
+<body>
+    <!-- <img id="nationalFlag" src="national_flag.png" style="display: none;" /> -->
+    <canvas></canvas>
+    <canvas></canvas>
+    <canvas></canvas>
+
+    <script>
+
+        // 解析 URL 中的查询参数并返回一个包含参数名和值的对象
+        function GetRequest() {
+            var url = decodeURI(location.search); // 获取url中"?"符后的字串
+            var theRequest = new Object();
+            if (url.indexOf("?") != -1) {
+                var str = url.substr(1);
+                strs = str.split("&");
+                for (var i = 0; i < strs.length; i++) {
+                    theRequest[strs[i].split("=")[0]] = unescape(strs[i].split("=")[1]);
+                }
+            }
+            return theRequest;
+        }
+
+        // 定义一个名为 Shard 的类
+        class Shard {
+            // Shard 类的构造函数，接受 x 坐标，y 坐标，色相作为参数
+            constructor(x, y, hue) {
+                this.x = x; // x 坐标
+                this.y = y; // y 坐标
+                this.hue = hue; // 色相
+                this.lightness = 50; // 亮度
+                this.size = 15 + Math.random() * 10; // 大小在 15 到 25 之间的随机值
+                const angle = Math.random() * 2 * Math.PI; // 0 到 2π 之间的随机角度
+                const blastSpeed = 1 + Math.random() * 6; // 1 到 7 之间的随机爆破速度
+                this.xSpeed = Math.cos(angle) * blastSpeed; // x 方向的速度
+                this.ySpeed = Math.sin(angle) * blastSpeed; // y 方向的速度
+                this.target = getTarget(); // 获取目标
+                this.ttl = 100; // 生命周期
+                this.timer = 0; // 定时器
+            }
+
+            // 绘制 Shard 对象
+            draw() {
+                ctx2.fillStyle = `hsl(${this.hue}, 100%, ${this.lightness}%)`;
+                ctx2.beginPath();
+                ctx2.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+                ctx2.closePath();
+                ctx2.fill();
+            }
+
+            // 更新 Shard 对象的状态
+            update() {
+                if (this.target) {
+                    const dx = this.target.x - this.x; // x 方向的距离
+                    const dy = this.target.y - this.y; // y 方向的距离
+                    const dist = Math.sqrt(dx * dx + dy * dy); // 与目标的距离
+                    const a = Math.atan2(dy, dx); // 与 x 轴的夹角
+                    const tx = Math.cos(a) * 5; // 目标的 x 方向速度
+                    const ty = Math.sin(a) * 5; // 目标的 y 方向速度
+                    this.size = lerp(this.size, 1.5, 0.05); // 缓慢改变大小
+
+                    if (dist < 5) {
+                        this.lightness = lerp(this.lightness, 100, 0.01); // 缓慢变亮
+                        this.xSpeed = this.ySpeed = 0; // 停止运动
+                        this.x = lerp(this.x, this.target.x + fidelity / 2, 0.05); // 缓慢移动到目标位置
+                        this.y = lerp(this.y, this.target.y + fidelity / 2, 0.05); // 缓慢移动到目标位置
+                        this.timer += 1; // 计时器增加
+                    } else if (dist < 10) {
+                        this.lightness = lerp(this.lightness, 100, 0.01); // 缓慢变亮
+                        this.xSpeed = lerp(this.xSpeed, tx, 0.1); // 缓慢改变水平速度
+                        this.ySpeed = lerp(this.ySpeed, ty, 0.1); // 缓慢改变垂直速度
+                        this.timer += 1; // 计时器增加
+                    } else {
+                        this.xSpeed = lerp(this.xSpeed, tx, 0.02); // 缓慢改变水平速度
+                        this.ySpeed = lerp(this.ySpeed, ty, 0.02); // 缓慢改变垂直速度
+                    }
+                } else {
+                    this.ySpeed += 0.05; // 重力影响，垂直速度增加
+                    this.size = lerp(this.size, 1, 0.05); // 缓慢改变大小
+
+                    if (this.y > c2.height) { // 如果超出画布底部
+                        shards.forEach((shard, idx) => {
+                            if (shard === this) {
+                                shards.splice(idx, 1); // 从数组中移除该 Shard 对象
+                            }
+                        });
+                    }
+                }
+
+                this.x = this.x + this.xSpeed; // 更新 x 坐标
+                this.y = this.y + this.ySpeed; // 更新 y 坐标
+            }
+        }
+        // Rocket 类，用于创建烟花的火箭
+        class Rocket {
+            constructor() {
+                // 初始化火箭的初始位置、角度、速度、颜色和轨迹
+                const quarterW = c2.width / 4;
+                this.x = quarterW + Math.random() * (c2.width - quarterW);
+                this.y = c2.height - 15;
+                this.angle = Math.random() * Math.PI / 4 - Math.PI / 6;
+                this.blastSpeed = 6 + Math.random() * 7;
+                this.shardCount = 15 + Math.floor(Math.random() * 15);
+                this.xSpeed = Math.sin(this.angle) * this.blastSpeed;
+                this.ySpeed = -Math.cos(this.angle) * this.blastSpeed;
+                this.hue = Math.floor(Math.random() * 360);
+                this.trail = [];
+            }
+
+            // 绘制火箭
+            draw() {
+                ctx2.save();
+                ctx2.translate(this.x, this.y);
+                ctx2.rotate(Math.atan2(this.ySpeed, this.xSpeed) + Math.PI / 2);
+                ctx2.fillStyle = `hsl(${this.hue}, 100%, 50%)`;
+                ctx2.fillRect(0, 0, 5, 15);
+                ctx2.restore();
+            }
+
+            // 更新火箭位置
+            update() {
+                this.x = this.x + this.xSpeed;
+                this.y = this.y + this.ySpeed;
+                this.ySpeed += 0.1;
+            }
+
+            // 爆炸效果，生成多个碎片
+            explode() {
+                for (let i = 0; i < 70; i++) {
+                    shards.push(new Shard(this.x, this.y, this.hue));
+                }
+            }
+        }
+        // 初始化
+        const [c1, c2, c3] = document.querySelectorAll('canvas'); // 获取页面中的三个 canvas 元素
+        const [ctx1, ctx2, ctx3] = [c1, c2, c3].map(c => c.getContext('2d')); // 获取三个 canvas 对应的绘图上下文
+        let fontSize = 200; // 初始字体大小
+        const rockets = []; // 存储火箭的数组
+        const shards = []; // 存储碎片的数组
+        const targets = []; // 存储目标点的数组
+        const fidelity = 3; // 碎片生成的精细度
+        let counter = 0; // 计数器
+        c2.width = c3.width = window.innerWidth; // 设置第二、第三个 canvas 的宽度为浏览器窗口宽度
+        c2.height = c3.height = window.innerHeight; // 设置第二、第三个 canvas 的高度为浏览器窗口高度
+        ctx1.fillStyle = '#000'; // 设置第一个 canvas 绘图上下文的填充颜色为黑色
+        const text = '2024年元旦快乐！祝大家心想事成'; // 待绘制的文本内容
+        let textWidth = 99999999; // 文本宽度初始化一个足够大的值
+        // // 加载国旗图像
+        // const nationalFlagImg = document.getElementById('nationalFlag');
+        // nationalFlagImg.onload = function () {
+        //     // 在第一个 canvas 上绘制国旗
+        //     ctx1.drawImage(nationalFlagImg, 10, 10, 100, 100); // 在左上角位置绘制国旗，大小为 100x100
+        //     // 绘制文本
+        //     ctx1.fillText(text, 120, fontSize); // 在国旗右侧绘制文本
+        // };
+        // nationalFlagImg.src = 'national_flag.png';
+
+        // 动态计算文本宽度，使得文本宽度不超过窗口宽度
+        while (textWidth > window.innerWidth) {
+            ctx1.font = `900 ${fontSize--}px Arial`; // 设置字体样式
+            textWidth = ctx1.measureText(text).width; // 计算文本宽度
+        }
+
+        c1.width = textWidth; // 设置第一个 canvas 的宽度为文本宽度
+        c1.height = fontSize * 1.5; // 设置第一个 canvas 的高度为字体大小的1.5倍
+        ctx1.font = `900 ${fontSize}px Arial`; // 设置第一个 canvas 绘图上下文的字体样式
+        ctx1.fillText(text, 0, fontSize); // 在第一个 canvas 上绘制文本
+        const imgData = ctx1.getImageData(0, 0, c1.width, c1.height); // 获取绘制的文本的图像数据
+
+        // 根据图像数据，生成目标点数组
+        for (let i = 0, max = imgData.data.length; i < max; i += 4) {
+            const alpha = imgData.data[i + 3]; // 获取当前像素点的透明度值
+            const x = Math.floor(i / 4) % imgData.width; // 计算当前像素点的 x 坐标
+            const y = Math.floor(i / 4 / imgData.width); // 计算当前像素点的 y 坐标
+
+            // 如果当前像素点不透明且满足精细度要求，则将其作为目标点加入目标点数组
+            if (alpha && x % fidelity === 0 && y % fidelity === 0) {
+                targets.push({ x, y });
+            }
+        }
+
+        // 设置第三个 canvas 绘图上下文的属性
+        ctx3.fillStyle = '#FFF'; // 设置填充颜色为白色
+        ctx3.shadowColor = '#FFF'; // 设置阴影颜色为白色
+        ctx3.shadowBlur = 25; // 设置阴影模糊程度为 25
+
+        // 动画循环
+        (function loop() {
+            // 清空画布
+            ctx2.fillStyle = "rgba(0, 0, 0, .1)";
+            ctx2.fillRect(0, 0, c2.width, c2.height);
+            counter += 1;
+
+            // 每隔一定帧数生成一个新的火箭
+            if (counter % 15 === 0) {
+                rockets.push(new Rocket());
+            }
+
+            // 对每个火箭进行绘制、更新、爆炸处理
+            rockets.forEach((r, i) => {
+                r.draw();
+                r.update();
+                if (r.ySpeed > 0) {
+                    r.explode();
+                    rockets.splice(i, 1);
+                }
+            });
+
+            // 对每个碎片进行绘制、更新、淡出处理
+            shards.forEach((s, i) => {
+                s.draw();
+                s.update();
+                if (s.timer >= s.ttl || s.lightness >= 99) {
+                    ctx3.fillRect(s.target.x, s.target.y, fidelity + 1, fidelity + 1);
+                    shards.splice(i, 1);
+                }
+            });
+
+            // 递归调用自身，实现动画循环
+            requestAnimationFrame(loop);
+        })();
+
+
+        // 定义线性插值函数，用于在两个值之间进行平滑的插值计算，辅助函数
+        const lerp = (a, b, t) => Math.abs(b - a) > 0.1 ? a + t * (b - a) : b;
+
+        // 定义一个函数用于获取目标点
+        function getTarget() {
+            if (targets.length > 0) {
+                // 随机选择一个目标点
+                const idx = Math.floor(Math.random() * targets.length);
+                let { x, y } = targets[idx];
+                // 从目标点数组中移除已选择的目标点
+                targets.splice(idx, 1);
+
+                // 将目标点坐标进行调整，使其位于画布中心
+                x += c2.width / 2 - textWidth / 2;
+                y += c2.height / 2 - fontSize / 2;
+
+                // 返回调整后的目标点坐标
+                return { x, y };
+            }
+        }
+
+    </script>
+
+</body>
+
+</html>
